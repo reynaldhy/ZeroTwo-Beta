@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login OSINT</title>
+</head>
+<body>
+
+<h2>Login</h2>
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="password" placeholder="Password">
+<button onclick="login()">Login</button>
+
+<!-- Firebase CDN -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
+<script src="firebase-config.js"></script>
+
+<script>
+document.body.style.display = "none";
+
+firebase.auth().onAuthStateChanged(function(user) {
+
+  const page = window.location.href;
+
+  if (user) {
+    if (page.includes("index.html")) {
+      window.location.replace("dashboard.html");
+      return;
+    }
+  }
+
+  document.body.style.display = "block";
+});
+
+function login(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  firebase.auth().signInWithEmailAndPassword(email,password)
+  .then(()=> {
+    window.location.replace("dashboard.html");
+  })
+  .catch(error=>{
+    alert(error.message);
+  });
+}
+</script>
+
+</body>
+</html>
