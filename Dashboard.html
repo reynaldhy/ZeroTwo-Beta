@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>OSINT X ULTIMATE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      background: black;
+      color: #00ff00;
+      font-family: monospace;
+      padding: 15px;
+    }
+    input, button {
+      background: black;
+      color: #00ff00;
+      border: 1px solid #00ff00;
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+    }
+    button:hover { background: #003300; }
+    a { color: #00ff00; }
+    hr { border: 1px solid #003300; }
+    iframe { margin-top:10px; }
+  </style>
+</head>
+
+<body>
+
+<h2>☠ OSINT X ULTIMATE SYSTEM</h2>
+<button onclick="logout()">Logout</button>
+
+<hr>
+
+<h3>🔎 Username Scanner</h3>
+<input type="text" id="username" placeholder="Masukkan username">
+<button onclick="checkUsername()">Scan Username</button>
+<div id="usernameResult"></div>
+
+<hr>
+
+<h3>🌍 IP Lookup</h3>
+<input type="text" id="ipInput" placeholder="Masukkan IP">
+<button onclick="checkIP()">Scan IP</button>
+<div id="ipResult"></div>
+
+<hr>
+
+<h3>📧 Email Check</h3>
+<input type="text" id="emailInput" placeholder="Masukkan email">
+<button onclick="checkEmail()">Check Email</button>
+<div id="emailResult"></div>
+
+<hr>
+
+<h3>📍 Auto IP Location</h3>
+<button onclick="getMyIPLocation()">Lihat Lokasi Saya</button>
+<div id="myLocationResult"></div>
+
+<hr>
+
+<h3>📡 GPS Real Device</h3>
+<button onclick="getGPS()">Ambil GPS</button>
+<div id="gpsResult"></div>
+<div id="mapBox"></div>
+
+<hr>
+
+<h3>📱 Cek Negara Nomor HP</h3>
+<input type="text" id="phoneInput" placeholder="Contoh: +628123456789">
+<button onclick="checkPhone()">Cek Nomor</button>
+<div id="phoneResult"></div>
+
+<hr>
+
+<h3>📜 History Scan</h3>
+<div id="historyBox"></div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="firebase-config.js"></script>
+
+<script>
+
+document.body.style.display = "none";
+
+firebase.auth().onAuthStateChanged(function(user) {
+  if (!user) {
+    window.location.replace("index.html");
+    return;
+  }
+  loadHistory(user.uid);
+  document.body.style.display = "block";
+});
+
+function logout(){
+  firebase.auth().signOut().then(()=>{
+    window.location.replace("index.html");
+  });
+}
+
+// USERNAME
+function checkUsername(){
+  const user = username.value;
+  const result = usernameResult;
+  const currentUser = firebase.auth().currentUser;
+
+  if(!user){ result.innerHTML="Masukkan username"; return; }
+
+  const platforms = [
+    "instagram.com/","github.com/","tiktok.com/@",
+    "twitter.com/","facebook.com/","reddit.com/user/"
+  ];
+
+  let output="<b>Hasil:</b><br><br>";
+  platforms.forEach(site=>{
+    output+=`<a href="https://${site}${user}" target="_blank">https://${site}${user}</a><br>`;
+  });
+
+  result.innerHTML=output;
+
+  firebase.firestore().collection("history").add({
+    uid: currentUser.uid,
+    type: "username",
+    value: user,
+    time: new Date()
+  });
+}
+
+// IP LOOKUP
+function checkIP(){
+  const ip=ipInput.value;
+  const result=ipResult;
+  const currentUser=firebase.auth().currentUser;
+
+  if(!ip){ result.innerHTML="Masukkan IP"; return; }
+
+  fetch(`https://ipapi.co/${ip}/json/`)
+  .then(res=>res.json())
+  .then(data=>{
+    result.innerHTML=`
+      Negara: ${data.country_name}<br>
+      Kota: ${data.city}<br>
+      ISP: ${data.org}
+    `;
+    firebase.firestore().collection("history").add({
+      uid: currentUser.uid,
+      type: "ip",
+      value: ip,
+      time: new Date()
+    });
+  });
+}
+
+// EMAIL CHECK (format basic)
+function checkEmail(){
+  const email=emailInput.value;
+  if(email.includes("@")){
+    emailResult.innerHTML="Format email valid ✔";
+  } else {
+    emailResult.innerHTML="Format email tidak valid ❌";
+  }
+}
+
+// AUTO IP LOCATION
+function getMyIPLocation(){
+  fetch("https://ipapi.co/json/")
+  .then(res=>res.json())
+  .then(data=>{
+    myLocationResult.innerHTML=`
+      IP: ${data.ip}<br>
+      Negara: ${data.country_name}<br>
+      Kota: ${data.city}<br>
+      ISP: ${data.org}
+    `;
+  });
+}
+
+// GPS REAL
+function getGPS(){
+  const currentUser=firebase.auth().currentUser;
+
+  if(!navigator.geolocation){
+    gpsResult.innerHTML="GPS tidak support";
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat=pos.coords.latitude;
+    const lon=pos.coords.longitude;
+
+    gpsResult.innerHTML=`Latitude: ${lat}<br>Longitude: ${lon}`;
+
+    mapBox.innerHTML=`
+      <iframe width="100%" height="250"
+      src="https://maps.google.com/maps?q=${lat},${lon}&z=15&output=embed"></iframe>
+    `;
+
+    firebase.firestore().collection("history").add({
+      uid: currentUser.uid,
+      type: "gps",
+      value: lat+","+lon,
+      time: new Date()
+    });
+  });
+}
+
+// PHONE CHECK (country code simple)
+function checkPhone(){
+  const phone=phoneInput.value;
+
+  if(phone.startsWith("+62")){
+    phoneResult.innerHTML="Negara: Indonesia";
+  } else if(phone.startsWith("+1")){
+    phoneResult.innerHTML="Negara: USA / Canada";
+  } else if(phone.startsWith("+44")){
+    phoneResult.innerHTML="Negara: UK";
+  } else {
+    phoneResult.innerHTML="Kode negara tidak dikenali";
+  }
+}
+
+// LOAD HISTORY
+function loadHistory(uid){
+  firebase.firestore()
+  .collection("history")
+  .where("uid","==",uid)
+  .orderBy("time","desc")
+  .limit(10)
+  .onSnapshot(snapshot=>{
+    let html="";
+    snapshot.forEach(doc=>{
+      const data=doc.data();
+      html+=`${data.type}: ${data.value}<br>`;
+    });
+    historyBox.innerHTML=html;
+  });
+}
+
+</script>
+
+</body>
+</html>
